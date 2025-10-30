@@ -2,180 +2,140 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Fanso Black Gold Edition</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>ShowMe – Accueil</title>
   <style>
     body {
       margin: 0;
       font-family: "Poppins", sans-serif;
       background-color: #000;
-      color: #FFD700;
-      text-align: center;
+      color: #f5c518;
     }
-    h1, h2, h3 {
-      color: #FFD700;
+    header {
+      background-color: #111;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #f5c518;
     }
-    .btn {
-      background-color: #FFD700;
+    header img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .new-post {
+      margin: 20px;
+      padding: 15px;
+      background: #111;
+      border-radius: 10px;
+      border: 1px solid #f5c518;
+    }
+    textarea {
+      width: 100%;
+      height: 80px;
+      border: none;
+      background: #000;
+      color: #fff;
+      resize: none;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    button {
+      background: #f5c518;
       color: #000;
       border: none;
       padding: 10px 20px;
-      margin: 10px;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      font-weight: bold;
-      transition: 0.3s;
-    }
-    .btn:hover {
-      background-color: #caa300;
-    }
-    .card {
-      background: #111;
-      border: 1px solid #FFD700;
-      border-radius: 10px;
-      padding: 20px;
-      margin: 15px auto;
-      max-width: 500px;
-    }
-    input, select {
-      padding: 10px;
-      width: 80%;
-      margin: 5px;
-      border-radius: 5px;
-      border: 1px solid #FFD700;
-      background: #000;
-      color: #FFD700;
-    }
-    video, img {
-      max-width: 90%;
-      border-radius: 10px;
-      border: 2px solid #FFD700;
       margin-top: 10px;
     }
-    .hidden { display: none; }
+    .posts {
+      margin: 20px;
+    }
+    .post {
+      background: #111;
+      border: 1px solid #f5c518;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .post img {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+    .actions button {
+      background: none;
+      color: #f5c518;
+      border: 1px solid #f5c518;
+    }
   </style>
 </head>
 <body>
+  <header>
+    <div style="display:flex; align-items:center;">
+      <img src="https://i.imgur.com/HLJzQWj.png" alt="logo">
+      <h2>ShowMe</h2>
+    </div>
+    <div id="username">👤 Utilisateur</div>
+  </header>
 
-  <h1>Fanso Black Gold Edition</h1>
-  <h3>Connexion ou création de compte</h3>
-
-  <div id="auth-section" class="card">
-    <input type="email" id="email" placeholder="Adresse e-mail"><br>
-    <input type="password" id="password" placeholder="Mot de passe"><br>
-    <button class="btn" onclick="login()">Se connecter / S'inscrire</button>
+  <div class="new-post">
+    <h3>Exprimez-vous 🖋️</h3>
+    <textarea id="postContent" placeholder="Écrivez quelque chose..."></textarea>
+    <button onclick="createPost()">Publier</button>
   </div>
 
-  <div id="role-section" class="card hidden">
-    <h3>Choisissez votre rôle</h3>
-    <button class="btn" onclick="setRole('user')">Je suis un abonné</button>
-    <button class="btn" onclick="setRole('model')">Je suis un créateur</button>
-    <button class="btn" onclick="setRole('admin')">Je suis admin</button>
-  </div>
+  <div class="posts" id="posts"></div>
 
-  <!-- USER DASHBOARD -->
-  <div id="user-section" class="hidden">
-    <h2>Espace Abonné</h2>
-    <p>Bienvenue dans votre espace privé ✨</p>
-    <div id="content-feed"></div>
-    <button class="btn" onclick="alert('Paiement test via PayPal/BaridiMob')">S’abonner</button><br>
-    <button class="btn" onclick="logout()">Déconnexion</button>
-  </div>
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-  <!-- MODEL DASHBOARD -->
-  <div id="model-section" class="hidden">
-    <h2>Espace Créateur</h2>
-    <input type="file" id="fileInput"><br>
-    <button class="btn" onclick="uploadFile()">Uploader le fichier</button>
-    <div id="uploaded"></div>
-    <h3>Live Stream</h3>
-    <input id="roomName" placeholder="Nom du salon Jitsi"><br>
-    <button class="btn" onclick="startLive()">Démarrer le live</button>
-    <div id="jitsi-container" style="height:400px;"></div><br>
-    <button class="btn" onclick="logout()">Déconnexion</button>
-  </div>
+    const SUPABASE_URL = "https://eovzfhrwgddxizpmuufm.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdnpmaHJ3Z2RkeGl6cG11dWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MjQxNjIsImV4cCI6MjA3NzQwMDE2Mn0.aPadva2eVeZ9wFjTI6-IZ6SPhlz_Ol53pwGSXiXkCZ4";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  <!-- ADMIN DASHBOARD -->
-  <div id="admin-section" class="hidden">
-    <h2>Espace Admin</h2>
-    <p>Liste des utilisateurs et contenus</p>
-    <div id="admin-list"></div>
-    <button class="btn" onclick="logout()">Déconnexion</button>
-  </div>
+    const postsContainer = document.getElementById("posts");
 
-  <script src="https://meet.jit.si/external_api.js"></script>
-  <script>
-    const supabaseUrl = 'https://eovzfhrwgddxizpmuufm.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdnpmaHJ3Z2RkeGl6cG11dWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MjQxNjIsImV4cCI6MjA3NzQwMDE2Mn0.aPadva2eVeZ9wFjTI6-IZ6SPhlz_Ol53pwGSXiXkCZ4';
-    const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
-
-    let currentUser = null;
-    let role = null;
-
-    async function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    async function loadPosts() {
+      const { data, error } = await supabase.from("posts").select("*").order("id", { ascending: false });
       if (error) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
-        if (signUpError) return alert(signUpError.message);
-        alert('Compte créé ! Vérifiez votre e-mail.');
-      } else {
-        currentUser = data.user;
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('role-section').classList.remove('hidden');
+        console.error("Erreur:", error);
+        return;
       }
-    }
-
-    function setRole(selectedRole) {
-      role = selectedRole;
-      document.getElementById('role-section').classList.add('hidden');
-      if (role === 'user') document.getElementById('user-section').classList.remove('hidden');
-      if (role === 'model') document.getElementById('model-section').classList.remove('hidden');
-      if (role === 'admin') loadAdmin();
-    }
-
-    async function uploadFile() {
-      const fileInput = document.getElementById('fileInput');
-      const file = fileInput.files[0];
-      if (!file) return alert('Choisissez un fichier');
-
-      const filePath = `${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage.from('media').upload(filePath, file);
-      if (error) return alert('Erreur upload: ' + error.message);
-      const publicUrl = `https://eovzfhrwgddxizpmuufm.supabase.co/storage/v1/object/public/media/${filePath}`;
-      document.getElementById('uploaded').innerHTML += `<img src="${publicUrl}" width="200">`;
-    }
-
-    function startLive() {
-      const room = document.getElementById('roomName').value || "fansoLive";
-      const domain = "meet.jit.si";
-      const options = {
-        roomName: room,
-        parentNode: document.getElementById("jitsi-container"),
-        width: "100%",
-        height: 400
-      };
-      new JitsiMeetExternalAPI(domain, options);
-    }
-
-    async function loadAdmin() {
-      document.getElementById('admin-section').classList.remove('hidden');
-      const { data: users } = await supabase.auth.admin.listUsers();
-      let html = "";
-      users?.forEach(u => {
-        html += `<p>${u.email}</p>`;
+      postsContainer.innerHTML = "";
+      data.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "post";
+        div.innerHTML = `
+          <p>${post.content}</p>
+          ${post.image_url ? `<img src="${post.image_url}" alt="post">` : ""}
+          <div class="actions">
+            <button onclick="likePost(${post.id})">❤️ ${post.likes || 0}</button>
+            <button onclick="commentPost(${post.id})">💬 Commenter</button>
+          </div>
+        `;
+        postsContainer.appendChild(div);
       });
-      document.getElementById('admin-list').innerHTML = html;
     }
 
-    function logout() {
-      supabase.auth.signOut();
-      location.reload();
+    async function createPost() {
+      const content = document.getElementById("postContent").value;
+      if (!content.trim()) return alert("Écrivez quelque chose !");
+      const { error } = await supabase.from("posts").insert([{ content }]);
+      if (error) console.error("Erreur:", error);
+      document.getElementById("postContent").value = "";
+      loadPosts();
     }
+
+    loadPosts();
   </script>
-
 </body>
 </html>
