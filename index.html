@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Fanso Black Gold Edition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background-color: #000;
+      color: #FFD700;
+      text-align: center;
+    }
+    h1, h2, h3 {
+      color: #FFD700;
+    }
+    .btn {
+      background-color: #FFD700;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    .btn:hover {
+      background-color: #caa300;
+    }
+    .card {
+      background: #111;
+      border: 1px solid #FFD700;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 15px auto;
+      max-width: 500px;
+    }
+    input, select {
+      padding: 10px;
+      width: 80%;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #FFD700;
+      background: #000;
+      color: #FFD700;
+    }
+    video, img {
+      max-width: 90%;
+      border-radius: 10px;
+      border: 2px solid #FFD700;
+      margin-top: 10px;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>Fanso Black Gold Edition</h1>
+  <h3>Connexion ou création de compte</h3>
+
+  <div id="auth-section" class="card">
+    <input type="email" id="email" placeholder="Adresse e-mail"><br>
+    <input type="password" id="password" placeholder="Mot de passe"><br>
+    <button class="btn" onclick="login()">Se connecter / S'inscrire</button>
+  </div>
+
+  <div id="role-section" class="card hidden">
+    <h3>Choisissez votre rôle</h3>
+    <button class="btn" onclick="setRole('user')">Je suis un abonné</button>
+    <button class="btn" onclick="setRole('model')">Je suis un créateur</button>
+    <button class="btn" onclick="setRole('admin')">Je suis admin</button>
+  </div>
+
+  <!-- USER DASHBOARD -->
+  <div id="user-section" class="hidden">
+    <h2>Espace Abonné</h2>
+    <p>Bienvenue dans votre espace privé ✨</p>
+    <div id="content-feed"></div>
+    <button class="btn" onclick="alert('Paiement test via PayPal/BaridiMob')">S’abonner</button><br>
+    <button class="btn" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <!-- MODEL DASHBOARD -->
+  <div id="model-section" class="hidden">
+    <h2>Espace Créateur</h2>
+    <input type="file" id="fileInput"><br>
+    <button class="btn" onclick="uploadFile()">Uploader le fichier</button>
+    <div id="uploaded"></div>
+    <h3>Live Stream</h3>
+    <input id="roomName" placeholder="Nom du salon Jitsi"><br>
+    <button class="btn" onclick="startLive()">Démarrer le live</button>
+    <div id="jitsi-container" style="height:400px;"></div><br>
+    <button class="btn" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div id="admin-section" class="hidden">
+    <h2>Espace Admin</h2>
+    <p>Liste des utilisateurs et contenus</p>
+    <div id="admin-list"></div>
+    <button class="btn" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <script src="https://meet.jit.si/external_api.js"></script>
+  <script>
+    const supabaseUrl = 'https://eovzfhrwgddxizpmuufm.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdnpmaHJ3Z2RkeGl6cG11dWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MjQxNjIsImV4cCI6MjA3NzQwMDE2Mn0.aPadva2eVeZ9wFjTI6-IZ6SPhlz_Ol53pwGSXiXkCZ4';
+    const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
+
+    let currentUser = null;
+    let role = null;
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+        if (signUpError) return alert(signUpError.message);
+        alert('Compte créé ! Vérifiez votre e-mail.');
+      } else {
+        currentUser = data.user;
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('role-section').classList.remove('hidden');
+      }
+    }
+
+    function setRole(selectedRole) {
+      role = selectedRole;
+      document.getElementById('role-section').classList.add('hidden');
+      if (role === 'user') document.getElementById('user-section').classList.remove('hidden');
+      if (role === 'model') document.getElementById('model-section').classList.remove('hidden');
+      if (role === 'admin') loadAdmin();
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      if (!file) return alert('Choisissez un fichier');
+
+      const filePath = `${Date.now()}_${file.name}`;
+      const { data, error } = await supabase.storage.from('media').upload(filePath, file);
+      if (error) return alert('Erreur upload: ' + error.message);
+      const publicUrl = `https://eovzfhrwgddxizpmuufm.supabase.co/storage/v1/object/public/media/${filePath}`;
+      document.getElementById('uploaded').innerHTML += `<img src="${publicUrl}" width="200">`;
+    }
+
+    function startLive() {
+      const room = document.getElementById('roomName').value || "fansoLive";
+      const domain = "meet.jit.si";
+      const options = {
+        roomName: room,
+        parentNode: document.getElementById("jitsi-container"),
+        width: "100%",
+        height: 400
+      };
+      new JitsiMeetExternalAPI(domain, options);
+    }
+
+    async function loadAdmin() {
+      document.getElementById('admin-section').classList.remove('hidden');
+      const { data: users } = await supabase.auth.admin.listUsers();
+      let html = "";
+      users?.forEach(u => {
+        html += `<p>${u.email}</p>`;
+      });
+      document.getElementById('admin-list').innerHTML = html;
+    }
+
+    function logout() {
+      supabase.auth.signOut();
+      location.reload();
+    }
+  </script>
+
+</body>
+</html>
